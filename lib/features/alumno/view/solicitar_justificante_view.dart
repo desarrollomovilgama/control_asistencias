@@ -1,10 +1,8 @@
-/// =============================================================================
-/// solicitar_justificante_view.dart
-/// -----------------------------------------------------------------------------
-/// RF-09 (lado alumno): el alumno notifica al docente que tiene un
-/// justificante emitido por la institución. El estatus oficial lo cambia
-/// el docente; aquí solo se envía la solicitud.
-/// =============================================================================
+/// @file: solicitar_justificante_view.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: RF-09: Alumno solicita justificante. Datos reales desde Laravel.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/material.dart';
@@ -15,6 +13,7 @@ import '../../../core/widgets/info_card.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/standard_text_field.dart';
+import '../../../services/alumno_service.dart';
 
 class SolicitarJustificanteView extends StatefulWidget {
   const SolicitarJustificanteView({super.key, required this.faltaId});
@@ -30,6 +29,7 @@ class _SolicitarJustificanteViewState
     extends State<SolicitarJustificanteView> {
   final TextEditingController _razon = TextEditingController();
   bool _enviando = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -38,18 +38,38 @@ class _SolicitarJustificanteViewState
   }
 
   Future<void> _enviar() async {
-    setState(() => _enviando = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _enviando = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Solicitud enviada (mock). Estatus inicial: Pendiente.',
-        ),
-      ),
+    if (_razon.text.trim().isEmpty) {
+      setState(() => _error = 'Describe el motivo de tu ausencia.');
+      return;
+    }
+
+    setState(() {
+      _enviando = true;
+      _error = null;
+    });
+
+    final result = await AlumnoService.solicitarJustificante(
+      attendanceId: widget.faltaId,
+      reason: _razon.text.trim(),
     );
-    Navigator.of(context).pop();
+
+    if (!mounted) return;
+
+    setState(() => _enviando = false);
+
+    if (result['success'] == true) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Justificante enviado. El docente lo revisará pronto.',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pop();
+    } else {
+      setState(() => _error = result['message']);
+    }
   }
 
   @override
@@ -64,7 +84,7 @@ class _SolicitarJustificanteViewState
             children: [
               SectionHeader(
                 titulo: 'Falta a justificar',
-                subtitulo: 'ID interno: ${widget.faltaId}',
+                subtitulo: 'ID: ${widget.faltaId}',
               ),
               AppSpacing.vGapMd,
               const InfoCard(
@@ -75,7 +95,7 @@ class _SolicitarJustificanteViewState
                     Expanded(
                       child: Text(
                         'El justificante OFICIAL lo emite la institución. '
-                        'Aquí sólo notificas al docente para que lo revise.',
+                            'Aquí solo notificas al docente para que lo revise.',
                       ),
                     ),
                   ],
@@ -84,12 +104,21 @@ class _SolicitarJustificanteViewState
               AppSpacing.vGapLg,
               StandardTextField(
                 controller: _razon,
-                label: 'Razón de la ausencia',
-                hint: 'Ej. Cita médica IMSS, comisión académica…',
+                label: 'Motivo de la ausencia',
+                hint: 'Ej. Cita médica IMSS, comisión académica...',
                 textCapitalization: TextCapitalization.sentences,
-                maxLength: 200,
+                maxLength: 500,
                 keyboardType: TextInputType.multiline,
               ),
+              if (_error != null) ...[
+                AppSpacing.vGapSm,
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ],
               AppSpacing.vGapLg,
               PrimaryButton(
                 label: 'Enviar solicitud',

@@ -1,17 +1,18 @@
-/// =============================================================================
-/// crear_grupo_view.dart
-/// -----------------------------------------------------------------------------
-/// Alta de un nuevo grupo. Datos: institución, materia, grupo, periodo,
-/// días/horario, capacidad. (Configuración de rubros vive en su propia vista.)
-/// =============================================================================
+/// @file: crear_grupo_view.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: Alta de un nuevo grupo. Datos reales desde Laravel.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../../../core/spacing/app_spacing.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/standard_text_field.dart';
+import '../viewmodel/grupos_viewmodel.dart';
 
 class CrearGrupoView extends StatefulWidget {
   const CrearGrupoView({super.key});
@@ -21,130 +22,118 @@ class CrearGrupoView extends StatefulWidget {
 }
 
 class _CrearGrupoViewState extends State<CrearGrupoView> {
-  final TextEditingController _materia = TextEditingController();
-  final TextEditingController _grupo = TextEditingController();
-  final TextEditingController _periodo = TextEditingController();
+  final TextEditingController _materia   = TextEditingController();
+  final TextEditingController _periodo   = TextEditingController();
   final TextEditingController _capacidad = TextEditingController(text: '30');
-
-  final Set<String> _dias = {'Lun', 'Mié'};
-  final TextEditingController _horaInicio = TextEditingController(text: '07:00');
-  final TextEditingController _horaFin = TextEditingController(text: '08:30');
-
-  static const List<String> _diasSemana = [
-    'Lun',
-    'Mar',
-    'Mié',
-    'Jue',
-    'Vie',
-    'Sáb',
-  ];
+  final TextEditingController _umbral    = TextEditingController(text: '80');
+  bool _enviando = false;
+  String? _error;
 
   @override
   void dispose() {
     _materia.dispose();
-    _grupo.dispose();
     _periodo.dispose();
     _capacidad.dispose();
-    _horaInicio.dispose();
-    _horaFin.dispose();
+    _umbral.dispose();
     super.dispose();
   }
 
-  void _guardar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Grupo creado (mock). Conexión real pendiente.'),
-      ),
+  Future<void> _guardar() async {
+    if (_materia.text.trim().isEmpty) {
+      setState(() => _error = 'El nombre de la asignatura es obligatorio.');
+      return;
+    }
+
+    setState(() {
+      _enviando = true;
+      _error = null;
+    });
+
+    final vm = context.read<GruposViewModel>();
+
+    final ok = await vm.crearGrupo(
+      subjectName:      _materia.text.trim(),
+      period:           _periodo.text.trim(),
+      maxCapacity:      int.tryParse(_capacidad.text) ?? 30,
+      minAttendancePct: int.tryParse(_umbral.text) ?? 80,
     );
-    Navigator.of(context).pop();
+
+    if (!mounted) return;
+    setState(() => _enviando = false);
+
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Grupo creado correctamente.'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pop();
+    } else {
+      setState(() => _error = vm.error);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Crear grupo')),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: AppSpacing.paddingScreen,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SectionHeader(titulo: 'Datos básicos'),
-              AppSpacing.vGapMd,
-              StandardTextField(
-                controller: _materia,
-                label: 'Asignatura',
-                prefixIcon: Icons.menu_book,
-                textCapitalization: TextCapitalization.words,
-              ),
-              AppSpacing.vGapMd,
-              StandardTextField(
-                controller: _grupo,
-                label: 'Identificador del grupo',
-                prefixIcon: Icons.tag,
-                textCapitalization: TextCapitalization.characters,
-              ),
-              AppSpacing.vGapMd,
-              StandardTextField(
-                controller: _periodo,
-                label: 'Periodo académico',
-                hint: 'Ej. 2026-1',
-                prefixIcon: Icons.calendar_today,
-              ),
-              AppSpacing.vGapMd,
-              StandardTextField(
-                controller: _capacidad,
-                label: 'Capacidad máxima',
-                keyboardType: TextInputType.number,
-                prefixIcon: Icons.group,
-              ),
-              AppSpacing.vGapLg,
-              const SectionHeader(titulo: 'Horario'),
-              AppSpacing.vGapSm,
-              Wrap(
-                spacing: AppSpacing.sm,
-                children: _diasSemana.map((d) {
-                  final sel = _dias.contains(d);
-                  return FilterChip(
-                    label: Text(d),
-                    selected: sel,
-                    onSelected: (v) => setState(() {
-                      if (v) {
-                        _dias.add(d);
-                      } else {
-                        _dias.remove(d);
-                      }
-                    }),
-                  );
-                }).toList(),
-              ),
-              AppSpacing.vGapMd,
-              Row(
-                children: [
-                  Expanded(
-                    child: StandardTextField(
-                      controller: _horaInicio,
-                      label: 'Hora inicio',
-                      prefixIcon: Icons.access_time,
-                    ),
-                  ),
-                  AppSpacing.hGapMd,
-                  Expanded(
-                    child: StandardTextField(
-                      controller: _horaFin,
-                      label: 'Hora fin',
-                      prefixIcon: Icons.access_time_filled,
+    return ChangeNotifierProvider(
+      create: (_) => GruposViewModel(),
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Crear grupo')),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: AppSpacing.paddingScreen,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const SectionHeader(titulo: 'Datos del grupo'),
+                AppSpacing.vGapMd,
+                StandardTextField(
+                  controller: _materia,
+                  label: 'Asignatura',
+                  prefixIcon: Icons.menu_book,
+                  textCapitalization: TextCapitalization.words,
+                ),
+                AppSpacing.vGapMd,
+                StandardTextField(
+                  controller: _periodo,
+                  label: 'Periodo académico',
+                  hint: 'Ej. 2026-1',
+                  prefixIcon: Icons.calendar_today,
+                ),
+                AppSpacing.vGapMd,
+                StandardTextField(
+                  controller: _capacidad,
+                  label: 'Capacidad máxima',
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.group,
+                ),
+                AppSpacing.vGapMd,
+                StandardTextField(
+                  controller: _umbral,
+                  label: 'Umbral mínimo de asistencia (%)',
+                  hint: 'Ej. 80',
+                  keyboardType: TextInputType.number,
+                  prefixIcon: Icons.percent,
+                ),
+                if (_error != null) ...[
+                  AppSpacing.vGapSm,
+                  Text(
+                    _error!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.error,
                     ),
                   ),
                 ],
-              ),
-              AppSpacing.vGapXl,
-              PrimaryButton(
-                label: 'Guardar grupo',
-                icon: Icons.save_outlined,
-                onPressed: _guardar,
-              ),
-            ],
+                AppSpacing.vGapXl,
+                PrimaryButton(
+                  label: 'Guardar grupo',
+                  icon: Icons.save_outlined,
+                  isLoading: _enviando,
+                  onPressed: _enviando ? null : _guardar,
+                ),
+              ],
+            ),
           ),
         ),
       ),

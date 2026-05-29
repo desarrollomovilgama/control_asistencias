@@ -1,8 +1,8 @@
-/// =============================================================================
-/// registro_view.dart
-/// -----------------------------------------------------------------------------
-/// Registro de cuenta nueva. Selecciona el rol (alumno / docente).
-/// =============================================================================
+/// @file: registro_view.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: Registro de cuenta nueva.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/material.dart';
@@ -25,9 +25,10 @@ class RegistroView extends StatefulWidget {
 }
 
 class _RegistroViewState extends State<RegistroView> {
-  final TextEditingController _nombre = TextEditingController();
-  final TextEditingController _correo = TextEditingController();
+  final TextEditingController _nombre   = TextEditingController();
+  final TextEditingController _correo   = TextEditingController();
   final TextEditingController _password = TextEditingController();
+
   TipoUsuario _tipo = TipoUsuario.alumno;
 
   @override
@@ -40,12 +41,14 @@ class _RegistroViewState extends State<RegistroView> {
 
   Future<void> _onSubmit(AuthViewModel vm) async {
     final ok = await vm.registrar(
-      nombre: _nombre.text,
-      correo: _correo.text,
+      nombre:   _nombre.text,
+      correo:   _correo.text,
       password: _password.text,
-      tipo: _tipo,
+      tipo:     _tipo,
     );
+
     if (!mounted || !ok) return;
+
     final ruta = _tipo == TipoUsuario.docente
         ? RouteNames.seleccionInstitucion
         : RouteNames.dashboardAlumno;
@@ -119,8 +122,7 @@ class _RegistroViewState extends State<RegistroView> {
                       label: 'Registrarme',
                       icon: Icons.app_registration,
                       isLoading: vm.cargando,
-                      onPressed:
-                          vm.cargando ? null : () => _onSubmit(vm),
+                      onPressed: vm.cargando ? null : () => _onSubmit(vm),
                     ),
                   ],
                 ),

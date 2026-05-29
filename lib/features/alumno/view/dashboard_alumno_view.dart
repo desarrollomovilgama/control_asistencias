@@ -50,12 +50,18 @@ class DashboardAlumnoView extends StatelessWidget {
             ),
           ],
         ),
-        floatingActionButton: FloatingActionButton.extended(
-          onPressed: () => Navigator.of(context).pushNamed(
-            RouteNames.registroAsistencia,
-          ),
-          icon: const Icon(Icons.qr_code_2),
-          label: const Text('Pasar lista'),
+        // ✅ Ahora — solo visible si tiene materias
+        floatingActionButton: Consumer<DashboardAlumnoViewModel>(
+          builder: (_, vm, __) {
+            if (vm.materias.isEmpty) return const SizedBox.shrink();
+            return FloatingActionButton.extended(
+              onPressed: () => Navigator.of(context).pushNamed(
+                RouteNames.registroAsistencia,
+              ),
+              icon: const Icon(Icons.qr_code_2),
+              label: const Text('Pasar lista'),
+            );
+          },
         ),
         body: Consumer<DashboardAlumnoViewModel>(
           builder: (_, vm, __) {

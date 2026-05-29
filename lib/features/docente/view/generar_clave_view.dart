@@ -1,9 +1,8 @@
-/// =============================================================================
-/// generar_clave_view.dart
-/// -----------------------------------------------------------------------------
-/// RF-01: Genera la clave de asistencia y muestra el toggle para abrir/cerrar
-/// la ventana de recepción.
-/// =============================================================================
+/// @file: generar_clave_view.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: RF-01: Genera clave de asistencia real desde Laravel.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/material.dart';
@@ -12,130 +11,157 @@ import 'package:provider/provider.dart';
 
 import '../../../core/spacing/app_spacing.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/info_card.dart';
+import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/section_header.dart';
 import '../viewmodel/clave_asistencia_viewmodel.dart';
+import '../viewmodel/grupos_viewmodel.dart';
 
 class GenerarClaveView extends StatelessWidget {
   const GenerarClaveView({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => ClaveAsistenciaViewModel(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => GruposViewModel()..cargar()),
+        ChangeNotifierProvider(create: (_) => ClaveAsistenciaViewModel()),
+      ],
       child: Scaffold(
         appBar: AppBar(title: const Text('Clave de asistencia')),
-        body: Consumer<ClaveAsistenciaViewModel>(
-          builder: (_, vm, __) {
+        body: Consumer2<GruposViewModel, ClaveAsistenciaViewModel>(
+          builder: (_, gruposVm, claveVm, __) {
+            if (gruposVm.cargando) return const LoadingState();
+
+            if (gruposVm.grupos.isEmpty) {
+              return const EmptyState(
+                titulo: 'Sin grupos',
+                descripcion: 'Crea un grupo primero para generar claves.',
+                icon: Icons.groups_outlined,
+              );
+            }
+
             return SafeArea(
               child: SingleChildScrollView(
                 padding: AppSpacing.paddingScreen,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    if (!vm.dentroDeHorario)
-                      _BannerHorario(onAlternar: vm.alternarHorario),
-                    if (!vm.dentroDeHorario) AppSpacing.vGapMd,
                     const SectionHeader(
-                      titulo: 'Sesión actual',
-                      subtitulo:
-                          'La clave sólo se genera dentro del horario del grupo.',
+                      titulo: 'Selecciona el grupo',
+                      subtitulo: 'La clave se genera para la sesión activa.',
                     ),
                     AppSpacing.vGapMd,
-                    _ClaveBox(clave: vm.clave),
-                    AppSpacing.vGapLg,
-                    SwitchListTile.adaptive(
-                      title: Text(
-                        vm.abierta
-                            ? 'Ventana ABIERTA — los alumnos pueden enviar'
-                            : 'Ventana CERRADA — no se aceptan claves',
+
+                    // Selector de grupo
+                    DropdownButtonFormField<String>(
+                      decoration: const InputDecoration(
+                        labelText: 'Grupo',
+                        prefixIcon: Icon(Icons.groups),
+                        border: OutlineInputBorder(),
                       ),
-                      subtitle: const Text(
-                        'Los alumnos sólo pueden enviar mientras esté abierta.',
-                      ),
-                      activeThumbColor: AppColors.success,
-                      value: vm.abierta,
-                      onChanged: (v) {
-                        if (v) {
-                          vm.abrir();
-                        } else {
-                          vm.cerrar();
-                        }
+                      value: claveVm.classroomId,
+                      items: gruposVm.grupos.map((g) {
+                        return DropdownMenuItem(
+                          value: g.id,
+                          child: Text(g.materia),
+                        );
+                      }).toList(),
+                      onChanged: (id) {
+                        if (id != null) claveVm.seleccionarGrupo(id);
                       },
                     ),
+                    AppSpacing.vGapLg,
+
+                    // Clave activa
+                    _ClaveBox(clave: claveVm.clave),
+                    AppSpacing.vGapLg,
+
+                    // Toggle sesión
+                    if (claveVm.sessionId != null)
+                      SwitchListTile.adaptive(
+                        title: Text(
+                          claveVm.abierta
+                              ? 'Ventana ABIERTA — alumnos pueden enviar'
+                              : 'Ventana CERRADA',
+                        ),
+                        activeThumbColor: AppColors.success,
+                        value: claveVm.abierta,
+                        onChanged: (v) {
+                          if (v) {
+                            claveVm.generarClave();
+                          } else {
+                            claveVm.cerrarSesion();
+                          }
+                        },
+                      ),
+
                     AppSpacing.vGapMd,
-                    InfoCard(
-                      child: Row(
-                        children: [
-                          const Icon(Icons.how_to_reg,
-                              color: AppColors.primary),
-                          AppSpacing.hGapMd,
-                          Expanded(
-                            child: Text(
-                              'Alumnos registrados: ${vm.registrados}',
-                              style: Theme.of(context).textTheme.titleMedium,
+
+                    // Contador de registrados
+                    if (claveVm.sessionId != null)
+                      InfoCard(
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.how_to_reg,
+                              color: AppColors.primary,
                             ),
-                          ),
-                          IconButton(
-                            tooltip: 'Simular un registro',
-                            onPressed: vm.abierta ? vm.simularRegistro : null,
-                            icon: const Icon(Icons.add),
-                          ),
-                        ],
+                            AppSpacing.hGapMd,
+                            Expanded(
+                              child: Text(
+                                'Alumnos registrados: ${claveVm.registrados}',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+
                     AppSpacing.vGapXl,
-                    PrimaryButton(
-                      label: vm.abierta ? 'Generar nueva clave' : 'Abrir sesión',
-                      icon: Icons.refresh,
-                      onPressed: vm.dentroDeHorario ? vm.abrir : null,
-                    ),
-                    AppSpacing.vGapMd,
-                    OutlinedButton.icon(
-                      onPressed: vm.alternarHorario,
-                      icon: const Icon(Icons.access_time),
-                      label: Text(
-                        vm.dentroDeHorario
-                            ? 'Simular fuera de horario'
-                            : 'Volver a horario válido',
+
+                    // Error
+                    if (claveVm.error != null)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+                        child: Text(
+                          claveVm.error!,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
                       ),
+
+                    PrimaryButton(
+                      label: claveVm.abierta
+                          ? 'Generar nueva clave'
+                          : 'Abrir sesión',
+                      icon: Icons.refresh,
+                      isLoading: claveVm.cargando,
+                      onPressed: claveVm.classroomId == null || claveVm.cargando
+                          ? null
+                          : claveVm.abierta
+                          ? claveVm.generarClave
+                          : claveVm.abrirSesion,
                     ),
+
+                    if (claveVm.abierta) ...[
+                      AppSpacing.vGapMd,
+                      OutlinedButton.icon(
+                        onPressed: claveVm.cerrarSesion,
+                        icon: const Icon(Icons.lock),
+                        label: const Text('Cerrar sesión'),
+                      ),
+                    ],
                   ],
                 ),
               ),
             );
           },
         ),
-      ),
-    );
-  }
-}
-
-class _BannerHorario extends StatelessWidget {
-  const _BannerHorario({required this.onAlternar});
-  final VoidCallback onAlternar;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: AppSpacing.paddingCard,
-      decoration: BoxDecoration(
-        color: AppColors.warning.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.4)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber, color: AppColors.warning),
-          AppSpacing.hGapSm,
-          const Expanded(
-            child: Text(
-              'No hay sesión activa en este horario. Sólo puedes generar '
-              'claves dentro del rango configurado del grupo.',
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -159,17 +185,16 @@ class _ClaveBox extends StatelessWidget {
           Text(
             placeholder ? 'Genera una clave' : 'Clave activa',
             style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color:
-                      AppColors.textOnPrimary.withValues(alpha: 0.85),
-                ),
+              color: AppColors.textOnPrimary.withValues(alpha: 0.85),
+            ),
           ),
           AppSpacing.vGapSm,
           Text(
             placeholder ? '— — — — — — — —' : clave!,
             style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  color: AppColors.textOnPrimary,
-                  letterSpacing: 4,
-                ),
+              color: AppColors.textOnPrimary,
+              letterSpacing: 4,
+            ),
           ),
           if (!placeholder) ...[
             AppSpacing.vGapSm,

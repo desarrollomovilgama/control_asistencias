@@ -1,13 +1,11 @@
-/// =============================================================================
-/// detalle_materia_view.dart
-/// -----------------------------------------------------------------------------
-/// Detalle de una materia para el Alumno.
-/// Muestra progreso e historial de asistencia (Solo lectura).
-/// =============================================================================
+/// @file: detalle_materia_view.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: Detalle de una materia para el Alumno. Datos reales.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routes/route_names.dart';
@@ -16,12 +14,11 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/attendance_status_chip.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/info_card.dart';
+import '../../../core/widgets/loading_state.dart';
 import '../../../core/widgets/progress_bar_attendance.dart';
 import '../../../core/widgets/section_header.dart';
-import '../../instituciones/model/institucion_model.dart';
 import '../model/materia_model.dart';
 import '../viewmodel/dashboard_alumno_viewmodel.dart';
-import '../widgets/estatus_rubro_card.dart';
 
 class DetalleMateriaView extends StatelessWidget {
   const DetalleMateriaView({super.key, required this.materiaId});
@@ -34,77 +31,37 @@ class DetalleMateriaView extends StatelessWidget {
       create: (_) => DashboardAlumnoViewModel()..cargar(),
       child: Consumer<DashboardAlumnoViewModel>(
         builder: (context, vm, child) {
+          if (vm.cargando) {
+            return Scaffold(
+              appBar: AppBar(title: const Text('Materia')),
+              body: const LoadingState(),
+            );
+          }
+
           final materia = vm.buscar(materiaId);
+
           return Scaffold(
             appBar: AppBar(
               title: Text(materia?.nombre ?? 'Materia'),
-              actions: [
-                if (materia != null)
-                  IconButton(
-                    icon: const Icon(Icons.vpn_key_outlined),
-                    tooltip: 'Código de clase',
-                    onPressed: () => _mostrarCodigo(context, materia),
-                  ),
-              ],
             ),
             floatingActionButton: materia != null
                 ? FloatingActionButton.extended(
-                    onPressed: () => Navigator.of(context).pushNamed(
-                      RouteNames.registroAsistencia,
-                      arguments: {'materiaId': materia.id},
-                    ),
-                    icon: const Icon(Icons.qr_code_2),
-                    label: const Text('Pasar lista'),
-                  )
+              onPressed: () => Navigator.of(context).pushNamed(
+                RouteNames.registroAsistencia,
+                arguments: {'materiaId': materia.id},
+              ),
+              icon: const Icon(Icons.qr_code_2),
+              label: const Text('Pasar lista'),
+            )
                 : null,
             body: materia == null
                 ? const EmptyState(
-                    titulo: 'Materia no encontrada',
-                    icon: Icons.search_off,
-                  )
+              titulo: 'Materia no encontrada',
+              icon: Icons.search_off,
+            )
                 : _Contenido(materia: materia),
           );
         },
-      ),
-    );
-  }
-
-  void _mostrarCodigo(BuildContext context, Materia materia) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Código de clase'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Comparte este código para que otros se unan:'),
-            AppSpacing.vGapMd,
-            SelectableText(
-              materia.codigoMateria,
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    color: AppColors.primary,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 2,
-                  ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Clipboard.setData(ClipboardData(text: materia.codigoMateria));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Código copiado')),
-              );
-              Navigator.pop(context);
-            },
-            child: const Text('Copiar'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
-          ),
-        ],
       ),
     );
   }
@@ -114,16 +71,8 @@ class _Contenido extends StatelessWidget {
   const _Contenido({required this.materia});
   final Materia materia;
 
-  List<RubroEvaluacion> _rubrosDe(Materia m) {
-    if (m.institucion == InstitucionesDemo.tec.nombre) {
-      return InstitucionesDemo.tec.rubros;
-    }
-    return InstitucionesDemo.universidad.rubros;
-  }
-
   @override
   Widget build(BuildContext context) {
-    final rubros = _rubrosDe(materia);
     return ListView(
       padding: AppSpacing.paddingScreen,
       children: [
@@ -135,11 +84,12 @@ class _Contenido extends StatelessWidget {
                 materia.docente,
                 style: Theme.of(context).textTheme.titleMedium,
               ),
+              AppSpacing.vGapXs,
               Text(
-                materia.institucion,
+                materia.periodo ?? 'Sin periodo',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondary,
-                    ),
+                  color: AppColors.textSecondary,
+                ),
               ),
               AppSpacing.vGapLg,
               ProgressBarAttendance(
@@ -152,39 +102,90 @@ class _Contenido extends StatelessWidget {
           ),
         ),
         AppSpacing.vGapLg,
-        const SectionHeader(titulo: 'Estatus por rubro'),
-        AppSpacing.vGapSm,
-        ...rubros.map(
-          (r) => Padding(
-            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
-            child: EstatusRubroCard(
-              rubro: r,
-              porcentajeActual: materia.porcentajeAsistencia,
-            ),
+        // Estatus de derecho a evaluación
+        InfoCard(
+          child: Row(
+            children: [
+              Icon(
+                materia.cumpleUmbral
+                    ? Icons.check_circle
+                    : Icons.cancel,
+                color: materia.cumpleUmbral
+                    ? AppColors.success
+                    : AppColors.error,
+                size: 28,
+              ),
+              AppSpacing.hGapMd,
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Derecho a evaluación',
+                      style: Theme.of(context).textTheme.titleMedium,
+                    ),
+                    AppSpacing.vGapXs,
+                    Text(
+                      materia.cumpleUmbral
+                          ? 'Tienes derecho — vas con ${(materia.porcentajeAsistencia * 100).toStringAsFixed(0)}%'
+                          : 'No alcanzas el ${(materia.umbralMinimo * 100).toStringAsFixed(0)}% requerido',
+                      style: Theme.of(context).textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         AppSpacing.vGapLg,
-        const SectionHeader(titulo: 'Historial reciente'),
-        AppSpacing.vGapSm,
-        ...materia.historial.map(
-          (r) => InfoCard(
-            child: Row(
-              children: [
-                AttendanceStatusChip(estado: r.estado, compact: true),
-                AppSpacing.hGapMd,
-                Expanded(
-                  child: Text(
-                    '${r.fecha.day}/${r.fecha.month}/${r.fecha.year}',
-                    style: Theme.of(context).textTheme.bodyMedium,
-                  ),
+        if (materia.historial.isNotEmpty) ...[
+          const SectionHeader(titulo: 'Historial reciente'),
+          AppSpacing.vGapSm,
+          ...materia.historial.map(
+                (r) => Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.xs),
+              child: InfoCard(
+                child: Row(
+                  children: [
+                    AttendanceStatusChip(
+                      estado: r.estado,
+                      compact: true,
+                    ),
+                    AppSpacing.hGapMd,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            r.materia,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                          Text(
+                            '${r.fecha.day}/${r.fecha.month}/${r.fecha.year}',
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AttendanceStatusChip(estado: r.estado),
+                  ],
                 ),
-                // Botón de justificar eliminado. El alumno solo consulta su estado.
-              ],
+              ),
             ),
           ),
-        ),
+        ] else
+          const EmptyState(
+            titulo: 'Sin historial',
+            descripcion: 'Aún no hay sesiones registradas para esta materia.',
+            icon: Icons.history,
+          ),
         AppSpacing.vGapXxl,
-      ].expand((w) => [w, AppSpacing.vGapXs]).toList(),
+      ],
     );
   }
 }
@@ -247,9 +248,9 @@ class _Pill extends StatelessWidget {
             Text(
               valor,
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: color,
-                    fontWeight: FontWeight.w700,
-                  ),
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             Text(
               label,

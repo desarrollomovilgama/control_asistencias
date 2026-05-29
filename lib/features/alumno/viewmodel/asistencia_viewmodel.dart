@@ -1,69 +1,64 @@
-/// =============================================================================
-/// asistencia_viewmodel.dart
-/// -----------------------------------------------------------------------------
-/// ViewModel del envío de clave de asistencia por el alumno (RF-02).
-/// Reglas (maqueta):
-///   - La clave demo válida es "GAMA1234" mientras la sesión esté abierta.
-///   - El alumno no puede enviar dos veces la misma clave (RF-02).
-///   - Si no hay sesión activa, no se puede enviar.
-/// =============================================================================
+/// @file: asistencia_viewmodel.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: ViewModel del registro de asistencia del alumno. Datos reales.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/foundation.dart';
+import '../../../services/alumno_service.dart';
 
-enum EnvioEstado { idle, enviando, exito, duplicado, claveInvalida, sinSesion }
+enum EnvioEstado { idle, enviando, exito, duplicado, claveInvalida, sinSesion, error }
 
 class AsistenciaViewModel extends ChangeNotifier {
-  bool _sesionAbierta = true; // En la maqueta el toggle siempre arranca abierto
-  String _claveValida = 'GAMA1234';
   EnvioEstado _estado = EnvioEstado.idle;
-  bool _yaRegistrado = false;
+  String? _mensajeError;
 
-  bool get sesionAbierta => _sesionAbierta;
   EnvioEstado get estado => _estado;
-  bool get yaRegistrado => _yaRegistrado;
+  String? get mensajeError => _mensajeError;
   bool get enviando => _estado == EnvioEstado.enviando;
-
-  /// Para pruebas o cuando se invalida la sesión desde el lado del docente.
-  void cerrarSesion() {
-    _sesionAbierta = false;
-    notifyListeners();
-  }
-
-  void abrirSesion(String nuevaClave) {
-    _sesionAbierta = true;
-    _claveValida = nuevaClave;
-    _yaRegistrado = false;
-    notifyListeners();
-  }
+  bool get yaRegistrado => _estado == EnvioEstado.exito;
 
   Future<void> enviarClave(String claveIngresada) async {
-    if (!_sesionAbierta) {
-      _estado = EnvioEstado.sinSesion;
-      notifyListeners();
-      return;
-    }
-    if (_yaRegistrado) {
-      _estado = EnvioEstado.duplicado;
+    if (claveIngresada.trim().isEmpty) {
+      _estado = EnvioEstado.claveInvalida;
+      _mensajeError = 'Ingresa la clave de la sesión.';
       notifyListeners();
       return;
     }
 
     _estado = EnvioEstado.enviando;
+    _mensajeError = null;
     notifyListeners();
-    await Future<void>.delayed(const Duration(milliseconds: 600));
 
-    if (claveIngresada.trim().toUpperCase() == _claveValida.toUpperCase()) {
-      _yaRegistrado = true;
+    final result = await AlumnoService.registrarAsistencia(
+      accessKey: claveIngresada.trim().toUpperCase(),
+    );
+
+    if (result['success'] == true) {
       _estado = EnvioEstado.exito;
     } else {
-      _estado = EnvioEstado.claveInvalida;
+      final mensaje = result['message'] ?? '';
+
+      if (mensaje.contains('expiró') || mensaje.contains('cerró')) {
+        _estado = EnvioEstado.sinSesion;
+      } else if (mensaje.contains('Ya registraste')) {
+        _estado = EnvioEstado.duplicado;
+      } else if (mensaje.contains('inválida') || mensaje.contains('No encontrado')) {
+        _estado = EnvioEstado.claveInvalida;
+      } else {
+        _estado = EnvioEstado.error;
+      }
+
+      _mensajeError = mensaje;
     }
+
     notifyListeners();
   }
 
   void reset() {
     _estado = EnvioEstado.idle;
+    _mensajeError = null;
     notifyListeners();
   }
 }

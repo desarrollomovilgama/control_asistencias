@@ -20,7 +20,10 @@ dependencies:
   provider: ^6.1.2
 
   # Cliente HTTP — apartado 5.2 del MPF
-  dio: ^5.7.0
+  dio: ^5.4.3
+
+  #Supabase
+  supabase_flutter: ^2.5.0
 
   # Persistencia local — apartado 6 del MPF
   hive: ^2.2.3
@@ -28,10 +31,13 @@ dependencies:
   path_provider: ^2.1.4
 
   # Almacenamiento seguro de credenciales — apartado 7.2 del MPF
-  flutter_secure_storage: ^9.2.2
+  flutter_secure_storage: ^9.0.0
 
   # Variables de entorno — apartado 7.1 del MPF
-  flutter_dotenv: ^5.2.1
+  flutter_dotenv: ^5.1.0
+
+  # Tiempo real via Supabase Realtime o Reverb/Pusher
+  pusher_channels_flutter: ^2.0.0
 
   # Tipografía — apartado 4.2 del MPF
   google_fonts: ^6.2.1
@@ -62,7 +68,7 @@ flutter:
 
   assets:
     - assets/images/
-    - .env
+    - assets/.env
 
 # Nota: Los logos institucionales deben colocarse en assets/images/.
 # Ver assets/images/README.md para los nombres exactos esperados.

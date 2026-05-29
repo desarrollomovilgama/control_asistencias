@@ -9,7 +9,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../../core/routes/route_names.dart';
-import '../../../core/session/session_service.dart';
 import '../../../core/spacing/app_spacing.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/loading_state.dart';
@@ -22,12 +21,16 @@ class GruposDocenteView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
-      create: (_) => GruposViewModel(context.read<SessionService>())..cargar(),
+      create: (_) => GruposViewModel()..cargar(),
       child: Scaffold(
         appBar: AppBar(title: const Text('Mis grupos')),
         floatingActionButton: FloatingActionButton.extended(
-          onPressed: () =>
-              Navigator.of(context).pushNamed(RouteNames.crearGrupo),
+          onPressed: () async {
+            await Navigator.of(context).pushNamed(RouteNames.crearGrupo);
+            if (context.mounted) {
+              context.read<GruposViewModel>().cargar();
+            }
+          },
           icon: const Icon(Icons.add),
           label: const Text('Nuevo grupo'),
         ),
@@ -55,7 +58,7 @@ class GruposDocenteView extends StatelessWidget {
                         grupo: g,
                         onTap: () => Navigator.of(context).pushNamed(
                           RouteNames.listaAlumnos,
-                          arguments: {'grupoId': g.id},
+                          arguments: {'classroomId': g.id},
                         ),
                       ),
                     ),

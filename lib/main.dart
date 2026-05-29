@@ -12,29 +12,44 @@
 /// =============================================================================
 library;
 
+import 'package:control_asistencias/services/test_connection.dart';
+import 'package:control_asistencias/services/auth_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 
 import 'core/routes/app_routes.dart';
 import 'core/routes/route_names.dart';
 import 'core/session/session_service.dart';
 import 'core/theme/app_theme.dart';
 
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Carga del .env. En modo demo no es obligatorio.
   try {
-    await dotenv.load(fileName: '.env');
+    await dotenv.load(fileName: 'assets/.env');
   } catch (_) {
-    // El archivo .env aún no existe; ver .env.example para las claves.
   }
+
+  await dotenv.load(fileName: 'assets/.env');
+  print('🔥 BASE URL: ${dotenv.env['LARAVEL_BASE_URL']}');
 
   // Inicialización de Hive (apartado 6 del MPF).
   await Hive.initFlutter();
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    realtimeClientOptions: const RealtimeClientOptions(
+      eventsPerSecond: 10,
+    ),
+  );
 
   runApp(const ControlAsistenciasApp());
 }

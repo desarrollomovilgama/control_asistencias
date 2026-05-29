@@ -1,40 +1,89 @@
-/// =============================================================================
-/// grupos_viewmodel.dart
-/// -----------------------------------------------------------------------------
-/// ViewModel para los grupos del docente. Devuelve el catálogo según la
-/// institución activa (RF-04).
-/// =============================================================================
+/// @file: grupos_viewmodel.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: ViewModel para los grupos del docente. Datos reales desde Laravel.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/foundation.dart';
-
-import '../../../core/session/session_service.dart';
-import '../../instituciones/model/institucion_model.dart';
+import '../../../services/docente_service.dart';
 import '../model/grupo_model.dart';
 
 class GruposViewModel extends ChangeNotifier {
-  GruposViewModel(this._session);
-
-  final SessionService _session;
-
   bool _cargando = false;
   List<Grupo> _grupos = [];
+  String? _error;
 
   bool get cargando => _cargando;
   List<Grupo> get grupos => _grupos;
-  Institucion? get institucion => _session.institucionActiva;
+  String? get error => _error;
 
   Future<void> cargar() async {
     _cargando = true;
+    _error = null;
     notifyListeners();
-    await Future<void>.delayed(const Duration(milliseconds: 400));
-    final inst = _session.institucionActiva;
-    if (inst == null || inst.esTec) {
-      _grupos = GruposDemo.catalogoTec();
+
+    final result = await DocenteService.getGrupos();
+
+    if (result['success'] == true) {
+      final List data = result['data'] ?? [];
+      _grupos = data.map((e) => Grupo.fromJson(e)).toList();
     } else {
-      _grupos = GruposDemo.catalogoUniversidad();
+      _error = result['message'];
     }
+
     _cargando = false;
     notifyListeners();
+  }
+
+  Future<bool> crearGrupo({
+    required String subjectName,
+    required String period,
+    required int maxCapacity,
+    required int minAttendancePct,
+  }) async {
+    _cargando = true;
+    notifyListeners();
+
+    final result = await DocenteService.crearGrupo(
+      subjectName:      subjectName,
+      period:           period,
+      maxCapacity:      maxCapacity,
+      minAttendancePct: minAttendancePct,
+    );
+
+    if (result['success'] == true) {
+      await cargar();
+      return true;
+    }
+
+    _error = result['message'];
+    _cargando = false;
+    notifyListeners();
+    return false;
+  }
+
+  Future<bool> eliminarAlumno({
+    required String enrollmentId,
+  }) async {
+    final result = await DocenteService.eliminarAlumno(
+      enrollmentId: enrollmentId,
+    );
+
+    if (result['success'] == true) {
+      await cargar();
+      return true;
+    }
+
+    _error = result['message'];
+    notifyListeners();
+    return false;
+  }
+
+  Grupo? buscar(String id) {
+    for (final g in _grupos) {
+      if (g.id == id) return g;
+    }
+    return null;
   }
 }

@@ -39,9 +39,10 @@ class _DetalleAlumnoAsistenciaViewState
     setState(() {
       final registro = _historial[index];
       _historial[index] = RegistroAsistencia(
-        fecha: registro.fecha,
+        id:     registro.id,
+        fecha:  registro.fecha,
         estado: nuevoEstado,
-        nota: registro.nota,
+        materia: registro.materia,
       );
     });
     ScaffoldMessenger.of(context).showSnackBar(

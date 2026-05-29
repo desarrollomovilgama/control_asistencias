@@ -109,7 +109,13 @@ class AppRoutes {
       case RouteNames.generarQrTemporal:
         return _build(const GenerarQrTemporalView(), settings);
       case RouteNames.listaAlumnos:
-        return _build(const ListaAlumnosView(), settings);
+        final args = settings.arguments as Map<String, dynamic>?;
+        return _build(
+          ListaAlumnosView(
+            classroomId: args?['classroomId'] as String? ?? '',
+          ),
+          settings,
+        );
       case RouteNames.detalleAlumnoAsistencia:
         final alumno = settings.arguments as AlumnoGrupo;
         return _build(DetalleAlumnoAsistenciaView(alumno: alumno), settings);

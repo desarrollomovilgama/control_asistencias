@@ -1,9 +1,8 @@
-/// =============================================================================
-/// matricularse_codigo_view.dart
-/// -----------------------------------------------------------------------------
-/// RF-06: El alumno se une a un grupo ingresando un código alfanumérico
-/// (funcionamiento similar a Microsoft Teams).
-/// =============================================================================
+/// @file: matricularse_codigo_view.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: RF-06: El alumno se une a un grupo con código real de Laravel.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/material.dart';
@@ -14,6 +13,7 @@ import '../../../core/spacing/app_spacing.dart';
 import '../../../core/widgets/primary_button.dart';
 import '../../../core/widgets/section_header.dart';
 import '../../../core/widgets/standard_text_field.dart';
+import '../../../services/alumno_service.dart';
 
 class MatricularseCodigoView extends StatefulWidget {
   const MatricularseCodigoView({super.key});
@@ -25,6 +25,7 @@ class MatricularseCodigoView extends StatefulWidget {
 class _MatricularseCodigoViewState extends State<MatricularseCodigoView> {
   final TextEditingController _codigo = TextEditingController();
   bool _enviando = false;
+  String? _error;
 
   @override
   void dispose() {
@@ -33,18 +34,36 @@ class _MatricularseCodigoViewState extends State<MatricularseCodigoView> {
   }
 
   Future<void> _onSubmit() async {
-    setState(() => _enviando = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    setState(() => _enviando = false);
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Código aceptado (mock). La materia aparecerá en tu tablero.',
-        ),
-      ),
+    if (_codigo.text.trim().isEmpty) {
+      setState(() => _error = 'Ingresa el código del grupo.');
+      return;
+    }
+
+    setState(() {
+      _enviando = true;
+      _error = null;
+    });
+
+    final result = await AlumnoService.matricularse(
+      invitationCode: _codigo.text.trim(),
     );
-    Navigator.of(context).pop();
+
+    if (!mounted) return;
+
+    setState(() => _enviando = false);
+
+    if (result['success'] == true) {
+      final materia = result['data']['data']['materia'] ?? 'el grupo';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('¡Te uniste a $materia correctamente!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      Navigator.of(context).pop();
+    } else {
+      setState(() => _error = result['message']);
+    }
   }
 
   @override
@@ -60,19 +79,29 @@ class _MatricularseCodigoViewState extends State<MatricularseCodigoView> {
               const SectionHeader(
                 titulo: 'Código del grupo',
                 subtitulo:
-                    'Ingresa el código que te dictó el docente. Si está '
-                    'vencido, pide uno nuevo (RF-06).',
+                'Ingresa el código que te dio el docente.',
               ),
               AppSpacing.vGapMd,
               StandardTextField(
                 controller: _codigo,
-                label: 'Código (ej. ITT-2026-AB12)',
+                label: 'Código del grupo',
                 prefixIcon: Icons.vpn_key,
                 textCapitalization: TextCapitalization.characters,
                 inputFormatters: [
-                  FilteringTextInputFormatter.allow(RegExp(r'[A-Za-z0-9-]')),
+                  FilteringTextInputFormatter.allow(
+                    RegExp(r'[A-Za-z0-9\-]'),
+                  ),
                 ],
               ),
+              if (_error != null) ...[
+                AppSpacing.vGapSm,
+                Text(
+                  _error!,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ],
               AppSpacing.vGapXl,
               PrimaryButton(
                 label: 'Unirme al grupo',

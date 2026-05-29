@@ -8,8 +8,8 @@
 library;
 
 import 'package:flutter/foundation.dart';
+import 'package:control_asistencias/services/auth_service.dart';
 
-import '../../../core/auth/credenciales_demo.dart';
 import '../../../core/session/session_service.dart';
 import '../model/usuario_model.dart';
 
@@ -45,33 +45,41 @@ class AuthViewModel extends ChangeNotifier {
       return false;
     }
 
-    if (!tieneDominioInstitucional(c)) {
-      _setError(
-        'El correo debe terminar en uno de los dominios institucionales.',
-      );
-      return false;
-    }
-
     _estado = LoginEstado.cargando;
     _error = null;
     notifyListeners();
 
-    await Future<void>.delayed(const Duration(milliseconds: 700));
+    try {
+      final result = await AuthService.login(
+        email:    c,
+        password: password,
+      );
 
-    final cred = buscarCredencial(correo: c, password: password);
-    if (cred == null) {
-      _setError('Credenciales inválidas. Verifica correo y contraseña.');
+      if (result['success'] == true) {
+        final data = result['data']['user'];
+        _usuario = Usuario(
+          id:             data['id']?.toString() ?? '',
+          nombreCompleto: '${data['first_name']} ${data['last_name']}',
+          correo:         c,
+          tipo: data['role'] == 'docente'
+              ? TipoUsuario.docente
+              : TipoUsuario.alumno,
+        );
+        _session.setUsuario(_usuario!);
+        _estado = LoginEstado.exito;
+        notifyListeners();
+        return true;
+      }
+
+      _setError(result['message'] ?? 'Credenciales inválidas.');
+      return false;
+    } catch (e) {
+      _setError('Error inesperado. Intenta de nuevo.');
       return false;
     }
-
-    _usuario = cred.usuario;
-    _session.setUsuario(cred.usuario);
-    _estado = LoginEstado.exito;
-    notifyListeners();
-    return true;
   }
 
-  /// Registro de nueva cuenta (mock — no persiste).
+  /// Registro de nueva cuenta (mock — no persiste)-------------------------.
   Future<bool> registrar({
     required String nombre,
     required String correo,
@@ -86,25 +94,38 @@ class AuthViewModel extends ChangeNotifier {
       _setError('La contraseña debe tener al menos 8 caracteres.');
       return false;
     }
-    if (!tieneDominioInstitucional(correo)) {
-      _setError('El correo debe ser institucional.');
-      return false;
-    }
 
     _estado = LoginEstado.cargando;
+    _error = null;
     notifyListeners();
-    await Future<void>.delayed(const Duration(milliseconds: 700));
 
-    _usuario = Usuario(
-      id: 'NEW-${DateTime.now().millisecondsSinceEpoch}',
-      nombreCompleto: nombre.trim(),
-      correo: correo.trim(),
-      tipo: tipo,
-    );
-    _session.setUsuario(_usuario!);
-    _estado = LoginEstado.exito;
-    notifyListeners();
-    return true;
+    try {
+      final result = await AuthService.register(
+        name:     nombre.trim(),
+        email:    correo.trim(),
+        password: password,
+        role:     tipo == TipoUsuario.docente ? 'docente' : 'alumno',
+      );
+
+      if (result['success'] == true) {
+        _usuario = Usuario(
+          id:             result['data']['user']['id']?.toString() ?? 'TEMP',
+          nombreCompleto: nombre.trim(),
+          correo:         correo.trim(),
+          tipo:           tipo,
+        );
+        _session.setUsuario(_usuario!);
+        _estado = LoginEstado.exito;
+        notifyListeners();
+        return true;
+      }
+
+      _setError(result['message'] ?? 'Error al registrar.');
+      return false;
+    } catch (e) {
+      _setError('Error inesperado. Intenta de nuevo.');
+      return false;
+    }
   }
 
   void cerrarSesion() {

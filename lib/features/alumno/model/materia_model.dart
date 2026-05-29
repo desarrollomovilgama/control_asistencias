@@ -1,22 +1,45 @@
-/// =============================================================================
-/// materia_model.dart
-/// -----------------------------------------------------------------------------
-/// Modelos del dashboard del alumno (RF-03).
-/// =============================================================================
+/// @file: materia_model.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: Modelos del dashboard del alumno. Sin mocks.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import '../../../core/widgets/attendance_status_chip.dart';
 
 class RegistroAsistencia {
   const RegistroAsistencia({
+    required this.id,
     required this.fecha,
     required this.estado,
-    this.nota,
+    required this.materia,
   });
 
+  final String id;
   final DateTime fecha;
   final EstadoAsistencia estado;
-  final String? nota;
+  final String materia;
+
+  factory RegistroAsistencia.fromJson(Map<String, dynamic> json) {
+    return RegistroAsistencia(
+      id: json['id'] ?? '',
+      fecha: DateTime.tryParse(json['fecha'] ?? '') ?? DateTime.now(),
+      estado: _parseEstado(json['estado']),
+      materia: json['materia'] ?? '',
+    );
+  }
+
+  static EstadoAsistencia _parseEstado(String? estado) {
+    switch (estado) {
+      case 'present':
+        return EstadoAsistencia.asistencia;
+      case 'justified':
+        return EstadoAsistencia.justificada;
+      case 'absent':
+      default:
+        return EstadoAsistencia.falta;
+    }
+  }
 }
 
 class Materia {
@@ -30,9 +53,8 @@ class Materia {
     required this.justificadas,
     required this.faltas,
     required this.umbralMinimo,
-    required this.historial,
-    this.codigoColor,
-    this.codigoMateria = 'ABC-123',
+    this.historial = const [],
+    this.periodo,
   });
 
   final String id;
@@ -45,10 +67,8 @@ class Materia {
   final int faltas;
   final double umbralMinimo;
   final List<RegistroAsistencia> historial;
-  final String? codigoColor;
-  final String codigoMateria;
+  final String? periodo;
 
-  /// (Asistencias + Justificantes) / Total de clases (RF-03).
   double get porcentajeAsistencia {
     if (totalSesiones == 0) return 0;
     return (asistencias + justificadas) / totalSesiones;
@@ -57,53 +77,19 @@ class Materia {
   bool get cumpleUmbral => porcentajeAsistencia >= umbralMinimo;
 
   int get totalRegistrado => asistencias + justificadas + faltas;
-}
 
-class MateriasDemo {
-  MateriasDemo._();
-
-  static List<Materia> catalogo() => <Materia>[
-        Materia(
-          id: 'mat-1',
-          nombre: 'Programación móvil',
-          docente: 'Mauro Sánchez',
-          institucion: 'Instituto Tecnológico',
-          totalSesiones: 24,
-          asistencias: 19,
-          justificadas: 2,
-          faltas: 3,
-          umbralMinimo: 0.80,
-          historial: _historialMock(),
-          codigoMateria: 'PM-2024',
-        ),
-        Materia(
-          id: 'mat-2',
-          nombre: 'Bases de datos',
-          docente: 'Gamaliel Castro',
-          institucion: 'Universidad',
-          totalSesiones: 20,
-          asistencias: 13,
-          justificadas: 1,
-          faltas: 6,
-          umbralMinimo: 0.80,
-          historial: _historialMock(),
-          codigoMateria: 'BD-I8',
-        ),
-      ];
-
-  static List<RegistroAsistencia> _historialMock() {
-    final ahora = DateTime.now();
-    return List.generate(8, (i) {
-      EstadoAsistencia estado = switch (i % 4) {
-        0 => EstadoAsistencia.asistencia,
-        1 => EstadoAsistencia.asistencia,
-        2 => EstadoAsistencia.falta,
-        _ => EstadoAsistencia.justificada,
-      };
-      return RegistroAsistencia(
-        fecha: ahora.subtract(Duration(days: i)),
-        estado: estado,
-      );
-    });
+  factory Materia.fromJson(Map<String, dynamic> json) {
+    return Materia(
+      id:            json['id'] ?? '',
+      nombre:        json['nombre'] ?? '',
+      docente:       json['docente'] ?? '',
+      institucion:   json['institucion'] ?? '',
+      totalSesiones: json['total_sesiones'] ?? 0,
+      asistencias:   json['asistencias'] ?? 0,
+      justificadas:  json['justificadas'] ?? 0,
+      faltas:        json['faltas'] ?? 0,
+      umbralMinimo:  (json['umbral_minimo'] ?? 0.8).toDouble(),
+      periodo:       json['periodo'],
+    );
   }
 }

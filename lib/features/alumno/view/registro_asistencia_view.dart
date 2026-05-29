@@ -1,10 +1,8 @@
-/// =============================================================================
-/// registro_asistencia_view.dart
-/// -----------------------------------------------------------------------------
-/// RF-02: Vista principal del alumno durante la clase.
-/// Captura la clave alfanumérica dictada por el docente y la envía.
-/// El campo se inhabilita en cuanto el docente cierra la sesión.
-/// =============================================================================
+/// @file: registro_asistencia_view.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: RF-02: Registro de asistencia con clave real de Laravel.
+/// @version: 1.0.0
+/// @last_update: 2026-05-29
 library;
 
 import 'package:flutter/material.dart';
@@ -34,16 +32,18 @@ class _RegistroAsistenciaViewState extends State<RegistroAsistenciaView> {
     super.dispose();
   }
 
-  String _mensaje(EnvioEstado e) {
+  String _mensaje(EnvioEstado e, String? mensajeError) {
     switch (e) {
       case EnvioEstado.exito:
         return '¡Listo! Tu asistencia quedó registrada.';
       case EnvioEstado.duplicado:
         return 'Ya registraste tu asistencia en esta sesión.';
       case EnvioEstado.claveInvalida:
-        return 'La clave no coincide. Verifícala con el docente.';
+        return mensajeError ?? 'La clave no es válida. Verifícala con el docente.';
       case EnvioEstado.sinSesion:
         return 'El docente cerró la ventana de registro.';
+      case EnvioEstado.error:
+        return mensajeError ?? 'Ocurrió un error. Intenta de nuevo.';
       default:
         return '';
     }
@@ -57,6 +57,7 @@ class _RegistroAsistenciaViewState extends State<RegistroAsistenciaView> {
       case EnvioEstado.sinSesion:
         return AppColors.warning;
       case EnvioEstado.claveInvalida:
+      case EnvioEstado.error:
         return AppColors.error;
       default:
         return AppColors.info;
@@ -80,16 +81,15 @@ class _RegistroAsistenciaViewState extends State<RegistroAsistenciaView> {
                     const SectionHeader(
                       titulo: 'Clave de la sesión',
                       subtitulo:
-                          'Escribe la clave dictada por tu docente. El campo '
-                          'se desactiva en cuanto cierra la ventana.',
+                      'Escribe la clave que te dictó el docente.',
                     ),
                     AppSpacing.vGapMd,
                     StandardTextField(
                       controller: _clave,
                       label: 'Clave (ej. GAMA1234)',
-                      hint: 'Sólo letras y números',
+                      hint: 'Solo letras y números',
                       autofocus: true,
-                      enabled: vm.sesionAbierta && !vm.yaRegistrado,
+                      enabled: !vm.yaRegistrado,
                       textCapitalization: TextCapitalization.characters,
                       maxLength: 12,
                       inputFormatters: [
@@ -101,10 +101,14 @@ class _RegistroAsistenciaViewState extends State<RegistroAsistenciaView> {
                     ),
                     AppSpacing.vGapMd,
                     PrimaryButton(
-                      label: vm.yaRegistrado ? 'Asistencia registrada' : 'Enviar',
-                      icon: Icons.send,
+                      label: vm.yaRegistrado
+                          ? 'Asistencia registrada'
+                          : 'Enviar',
+                      icon: vm.yaRegistrado
+                          ? Icons.check_circle
+                          : Icons.send,
                       isLoading: vm.enviando,
-                      onPressed: !vm.sesionAbierta || vm.yaRegistrado
+                      onPressed: vm.yaRegistrado || vm.enviando
                           ? null
                           : () => vm.enviarClave(_clave.text),
                     ),
@@ -122,25 +126,22 @@ class _RegistroAsistenciaViewState extends State<RegistroAsistenciaView> {
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.info_outline,
-                                color: _color(vm.estado)),
+                            Icon(
+                              vm.estado == EnvioEstado.exito
+                                  ? Icons.check_circle_outline
+                                  : Icons.info_outline,
+                              color: _color(vm.estado),
+                            ),
                             AppSpacing.hGapSm,
                             Expanded(
                               child: Text(
-                                _mensaje(vm.estado),
-                                style: TextStyle(color: _color(vm.estado)),
+                                _mensaje(vm.estado, vm.mensajeError),
+                                style: TextStyle(
+                                  color: _color(vm.estado),
+                                ),
                               ),
                             ),
                           ],
-                        ),
-                      ),
-                    AppSpacing.vGapXxl,
-                    if (vm.sesionAbierta)
-                      TextButton.icon(
-                        onPressed: vm.cerrarSesion,
-                        icon: const Icon(Icons.lock_clock),
-                        label: const Text(
-                          'Simular cierre de sesión por el docente',
                         ),
                       ),
                   ],
