@@ -1,7 +1,41 @@
+<<<<<<< Updated upstream
+=======
+/// @file: main.dart
+/// @project: Proyecto B - GAMA Solutions
+/// @description: Punto de entrada de la app.
+/// @version: 2.0.0
+/// @last_update: 2026-06-01
+library;
+
+>>>>>>> Stashed changes
 import 'package:flutter/material.dart';
 
+<<<<<<< Updated upstream
 void main() {
   runApp(const MyApp());
+=======
+import 'core/routes/app_routes.dart';
+import 'core/routes/route_names.dart';
+import 'core/session/session_service.dart';
+import 'core/theme/app_theme.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await dotenv.load(fileName: 'assets/.env');
+
+  await Hive.initFlutter();
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
+    realtimeClientOptions: const RealtimeClientOptions(
+      eventsPerSecond: 10,
+    ),
+  );
+
+  runApp(const ControlAsistenciasApp());
+>>>>>>> Stashed changes
 }
 
 class MyApp extends StatelessWidget {
@@ -69,6 +103,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   Widget build(BuildContext context) {
+<<<<<<< Updated upstream
     // This method is rerun every time setState is called, for instance as done
     // by the _incrementCounter method above.
     //
@@ -116,6 +151,30 @@ class _MyHomePageState extends State<MyHomePage> {
         onPressed: _incrementCounter,
         tooltip: 'Increment',
         child: const Icon(Icons.add),
+=======
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<SessionService>(
+          create: (_) => SessionService(),
+        ),
+      ],
+      child: MaterialApp(
+        title: 'Control de Asistencias',
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.light,
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+        ],
+        supportedLocales: const [
+          Locale('es'),
+          Locale('en'),
+        ],
+        locale: const Locale('es'),
+        initialRoute: RouteNames.splash,
+        onGenerateRoute: AppRoutes.generate,
+>>>>>>> Stashed changes
       ),
     );
   }
