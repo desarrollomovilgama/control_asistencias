@@ -1,5 +1,8 @@
 <<<<<<< Updated upstream
+<<<<<<< Updated upstream
 =======
+=======
+>>>>>>> Stashed changes
 /// @file: main.dart
 /// @project: Proyecto B - GAMA Solutions
 /// @description: Punto de entrada de la app.
@@ -7,6 +10,7 @@
 /// @last_update: 2026-06-01
 library;
 
+<<<<<<< Updated upstream
 >>>>>>> Stashed changes
 import 'package:flutter/material.dart';
 
@@ -14,6 +18,15 @@ import 'package:flutter/material.dart';
 void main() {
   runApp(const MyApp());
 =======
+=======
+import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+>>>>>>> Stashed changes
 import 'core/routes/app_routes.dart';
 import 'core/routes/route_names.dart';
 import 'core/session/session_service.dart';
